@@ -1,0 +1,292 @@
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <iomanip>
+
+namespace classes {
+
+    class Endereco {
+    private:  
+        std::string cep;
+        std::string logradouro;
+        std::string bairro;
+        std::string cidade;
+
+    public:
+        Endereco(const std::string& cep, const std::string& logradouro,
+                 const std::string& bairro, const std::string& cidade)
+                : cep(cep), logradouro(logradouro), bairro(bairro), cidade(cidade) {}
+
+        // Adiciona getters para Endereco
+        const std::string& getCep() const { return cep; }
+        const std::string& getLogradouro() const { return logradouro; }
+        const std::string& getBairro() const { return bairro; }
+        const std::string& getCidade() const { return cidade; }
+    };
+
+    class Pessoa {
+    private:
+        int id;
+        std::string nome;
+        std::string contato;
+
+    public:
+        Pessoa(const int& id, const std::string& nome, const std::string& contato)
+            : id(id), nome(nome), contato(contato) {}
+
+        // Adiciona getters para Pessoa
+        int getId() const { return id; }
+        const std::string& getNome() const { return nome; }
+        const std::string& getContato() const { return contato; }
+    };
+
+    class Corretor; // Forward declaration para evitar erro de definição incompleta
+
+    class Imovel {
+    private:
+        int codigo;
+        std::string tipo_imovel;
+        float valor_aluguel;
+        float valor_venda;
+        Endereco end;
+
+    public:
+        Imovel(const int& codigo, const std::string& tipo_imovel, float valor_aluguel, 
+               float valor_venda, const Endereco& end)
+               : codigo(codigo), tipo_imovel(tipo_imovel), 
+                 valor_aluguel(valor_aluguel), valor_venda(valor_venda), end(end) {}
+
+        std::vector<Corretor> corretores;
+
+        void atualiza_valor(const std::string& tipo, float novo_valor) {
+            if (tipo != "aluguel" && tipo != "venda") {
+                std::cout << "Informe o tipo: aluguel/venda; e o novo valor\n";
+            } else {
+                std::cout << std::fixed << std::setprecision(2); // Ajuste de formato aplicado uma vez
+                if (tipo == "aluguel") {
+                    valor_aluguel = novo_valor;
+                    //std::cout << "O novo valor de aluguel é R$ " << novo_valor << std::endl;
+                }
+                if (tipo == "venda") {
+                    valor_venda = novo_valor;
+                    //std::cout << "O novo valor de venda é R$ " << novo_valor << std::endl;
+                }
+            }
+        }
+
+        // Adiciona getters para Imovel
+        int getCodigo() const { return codigo; }
+        const std::string& getTipoImovel() const { return tipo_imovel; }
+        float getValorAluguel() const { return valor_aluguel; }
+        float getValorVenda() const { return valor_venda; }
+        const Endereco& getEndereco() const { return end; }
+    };
+
+    class Proprietario : public Pessoa {
+    private:
+        Imovel propriedade;
+
+    public:
+        Proprietario(const int& id, const std::string& nome, const std::string& contato, const Imovel& propriedade)
+            : Pessoa(id, nome, contato), propriedade(propriedade) {}
+
+        // Adiciona getter para propriedade
+        const Imovel& getPropriedade() const { return propriedade; }
+    };
+
+    class Inquilino : public Pessoa {
+    private:
+        Imovel posse;
+
+    public:
+        Inquilino(const int& id, const std::string& nome, const std::string& contato, const Imovel& posse)
+            : Pessoa(id, nome, contato), posse(posse) {}
+
+        // Adiciona getter para posse
+        const Imovel& getPosse() const { return posse; }
+    };
+
+    class Corretor : public Pessoa {
+    private:
+        std::string registro;
+
+    public:
+        Corretor(const int& id, const std::string& nome, const std::string& contato, const std::string& registro)
+            : Pessoa(id, nome, contato), registro(registro) {}
+
+        // Adiciona getter para registro
+        const std::string& getRegistro() const { return registro; }
+    };
+
+    class Inativo : public Pessoa {
+    private:
+        Imovel propriedade;
+
+    public:
+        Inativo(const int& id, const std::string& nome, const std::string& contato)
+            : Pessoa(id, nome, contato), propriedade(-1, "", 0.0f, 0.0f, Endereco("", "", "", "")) {}
+
+        // Função para adicionar propriedade ao Inativo
+        void adicionarPropriedade(const Imovel& imovel) {
+            propriedade = imovel;
+        }
+
+        // Getter para propriedade
+        const Imovel& getPropriedade() const { return propriedade; }
+    };
+
+    std::vector<Endereco> enderecos;
+    std::vector<Imovel> imoveis;
+    std::vector<Proprietario> proprietarios;
+    std::vector<Inquilino> inquilinos;
+    std::vector<Inativo> inativos;
+    std::vector<Corretor> corretores;
+
+    void realiza_venda(int cod_imovel, int id_comprador) {
+        // Busca e processa o proprietário antigo
+        for (auto it = proprietarios.begin(); it != proprietarios.end(); ++it) {
+            if (it->getPropriedade().getCodigo() == cod_imovel) {
+                inativos.push_back(Inativo(it->getId(), it->getNome(), it->getContato()));
+                it = proprietarios.erase(it);
+                break;
+            }
+        }
+
+        // Busca e processa o inquilino antigo
+        for (auto it = inquilinos.begin(); it != inquilinos.end(); ++it) {
+            if (it->getId() == id_comprador) {
+                proprietarios.push_back(Proprietario(it->getId(), it->getNome(), it->getContato(), it->getPosse()));
+                it = inquilinos.erase(it);
+                return;  // Saia da função, pois a venda já foi realizada
+            }
+        }
+
+        // Busca e processa o inativo antigo
+        for (auto it = inativos.begin(); it != inativos.end(); ++it) {
+            if (it->getId() == id_comprador) {
+                // Encontre o imóvel a ser vendido
+                for (const auto& imovel : imoveis) {
+                    if (imovel.getCodigo() == cod_imovel) {
+                        proprietarios.push_back(Proprietario(it->getId(), it->getNome(), it->getContato(), imovel));
+                        it = inativos.erase(it);
+                        return;  // Saia da função, pois a venda já foi realizada
+                    }
+                }
+            }
+        }
+    }
+
+}
+
+int main() {
+    using namespace classes;
+
+    Endereco endereco_1("85749-000", "Rua Um", "Bairro A", "Joinville - SC");
+    enderecos.push_back(endereco_1);
+    Endereco endereco_2("99120-000", "Rua Dois", "Bairro B", "Passo Fundo - RS");
+    enderecos.push_back(endereco_2);
+    Endereco endereco_3("12345-000", "Rua Tres", "Bairro C", "Campinas - SP");
+    enderecos.push_back(endereco_3);
+
+    Corretor corretor_A(789, "Juca", "999-888", "123.879");
+    Corretor corretor_B(497, "Josias", "567-321", "245.987");
+    corretores.push_back(corretor_A); corretores.push_back(corretor_B);
+
+    Imovel imovel_1(1, "Apartamento", 1200.0, 200000.0, endereco_1);
+    imovel_1.corretores = corretores;
+    imoveis.push_back(imovel_1);
+    Imovel imovel_2(2, "Casa", 2500.0, 400000.0, endereco_2);
+    imovel_2.corretores = corretores;
+    imoveis.push_back(imovel_2);
+    Imovel imovel_3(3, "Apartamento", 2000.0, 300000.0, endereco_3);
+    imovel_3.corretores = corretores;
+    imoveis.push_back(imovel_3);
+
+    Proprietario proprietario_1(654, "Janaina", "745-235", imovel_1);
+    proprietarios.push_back(proprietario_1);
+    Proprietario proprietario_2(124, "Felipe", "821-635", imovel_2);
+    proprietarios.push_back(proprietario_2);
+    Proprietario proprietario_3(654, "Adao", "412-987", imovel_3);
+    proprietarios.push_back(proprietario_3);
+
+    Inquilino inquilino_1(999, "Lucas", "598-357", imovel_1);
+    inquilinos.push_back(inquilino_1);
+    Inquilino inquilino_2(888, "Ana", "124-963", imovel_2);
+    inquilinos.push_back(inquilino_2);
+    Inquilino inquilino_3(555, "Davi", "635-987", imovel_3);
+    inquilinos.push_back(inquilino_3);
+
+    Inativo inativo(812, "Joao", "579-963");
+    inativos.push_back(inativo);
+
+    // Mostrar os proprietarios e inquilinos e seus respectivos imoveis
+    std::cout << "Proprietarios e codigo do Imovel:\n";
+    for (const auto& obj : proprietarios) {
+        std::cout << obj.getNome() << " - " << obj.getPropriedade().getCodigo() << std::endl;
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Inquilinos e codigo do Imovel:\n";
+    for (const auto& obj : inquilinos) {
+        std::cout << obj.getNome() << " - " << obj.getPosse().getCodigo() << std::endl;
+    }
+
+    std::cout << "\n";
+    // Mostrar os valores de venda dos imoveis
+    std::cout << "Valores de venda dos imoveis:\n";
+    for (const auto& obj : imoveis) {
+        std::cout << "Imovel " << obj.getCodigo() << " - " <<
+            std::fixed << std::setprecision(2) << obj.getValorVenda() << std::endl;
+    }
+
+    std::cout << "\n";
+
+    // Alterar valor de venda do imovel 2
+    std::cout << "O valor de venda do imovel 2 passara a ser 350.000,00.\n";
+    for (auto& obj : imoveis) { // Use referência aqui
+        if (obj.getCodigo() == 2) {
+            obj.atualiza_valor("venda", 350000.0);
+        }
+    }
+
+    std::cout << "\n";
+
+    // Mostrar os valores de venda dos imoveis
+    std::cout << "Valores de venda dos imoveis:\n";
+    for (const auto& obj : imoveis) {
+        std::cout << "Imovel " << obj.getCodigo() << " - " << obj.getValorVenda() << std::endl;
+    }
+
+    std::cout << "\n";
+
+    std::cout << "O imovel 2 sera vendido a inquilina Ana, e o imovel 3 ao inativo Joao.\n";
+
+    realiza_venda(2, 888);
+    realiza_venda(3, 812);
+
+    std::cout << "\n";
+
+    // Mostrar os proprietarios e inquilinos e seus respectivos imoveis
+    std::cout << "Proprietarios e codigo do Imovel:\n";
+    for (const auto& obj : proprietarios) {
+        std::cout << obj.getNome() << " - " << obj.getPropriedade().getCodigo() << std::endl;
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Inquilinos e codigo do Imovel:\n";
+    for (const auto& obj : inquilinos) {
+        std::cout << obj.getNome() << " - " << obj.getPosse().getCodigo() << std::endl;
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Inativos:\n";
+    for (const auto& obj : inativos) {
+        std::cout << obj.getNome() << std::endl;
+    }
+
+    return 0;
+}
